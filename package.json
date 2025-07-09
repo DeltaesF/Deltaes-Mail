@@ -1,0 +1,71 @@
+{
+  "name": "emailui",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "dev": "next dev -p 3001",
+    "build": "next build",
+    "start": "next start -p 3001",
+    "lint": "next lint",
+    "electron:build": "tsc -p tsconfig.electron.json",
+    "pack": "npm run build && npm run electron:build && electron-builder"
+  },
+  "dependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/formidable": "^3.4.5",
+    "@types/node": "^20",
+    "@types/nodemailer": "^6.4.17",
+    "@types/quill": "^2.0.14",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "canvas-confetti": "^1.9.3",
+    "concurrently": "^9.2.0",
+    "dotenv": "^16.4.5",
+    "electron-log": "^5.1.5",
+    "eslint": "^9",
+    "eslint-config-next": "15.3.3",
+    "formidable": "^3.5.4",
+    "googleapis": "^150.0.1",
+    "next": "15.3.3",
+    "nodemailer": "^7.0.3",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-quill": "^2.0.0",
+    "react-quill-new": "^3.4.6",
+    "tailwindcss": "^4",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3",
+    "wait-on": "^8.0.3",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "electron": "^37.1.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.emailui.app",
+    "productName": "EmailUI",
+    "asar": false,
+    "files": [
+      "dist/**/*",
+      "app/**/*",
+      "component/**/*",
+      "lib/**/*",
+      "public/**/*",
+      ".next/**/*",
+      "package.json",
+      "tsconfig.json",
+      "postcss.config.mjs",
+      ".env"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis"
+    }
+  }
+}
