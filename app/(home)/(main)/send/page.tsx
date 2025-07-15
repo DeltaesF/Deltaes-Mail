@@ -34,6 +34,10 @@ export default function SendEmailPage() {
 
   const [showModal, setShowModal] = useState(false);
 
+  const [lastSentTimestamp, setLastSentTimestamp] = useState<string | null>(
+    null
+  );
+
   // 📌 서버에서 발신자 계정 목록을 불러오기
   useEffect(() => {
     const fetchAccounts = async () => {
@@ -61,6 +65,7 @@ export default function SendEmailPage() {
 
     setLoading(true);
     setStatus([]);
+    setLastSentTimestamp(null); // 새 발송 시작 시, 이전 타임스탬프 초기화
 
     const formData = new FormData();
     formData.append("subject", subject);
@@ -86,9 +91,71 @@ export default function SendEmailPage() {
       setStatus((prev) => [...prev, ...text.trim().split("\n")]);
     }
 
+    setLastSentTimestamp(new Date().toISOString());
+    setStatus((prev) => [
+      ...prev,
+      "[알림] 발송 완료! 이제 반송 메일을 확인할 수 있습니다.",
+    ]);
+
+    // await fetchLogs();
+
     setLoading(false);
     setShowModal(true);
     fireConfetti();
+  };
+
+  // // ✅ 서버 로그를 status에 추가
+  // const fetchLogs = async () => {
+  //   const res = await fetch("/api/log");
+  //   const data = await res.json();
+
+  //   if (data.logs) {
+  //     const lines = data.logs.split("\n").filter(Boolean);
+  //     setStatus((prev) => [
+  //       ...prev,
+  //       "--- 📑 서버에 저장된 발송 로그 ---",
+  //       ...lines,
+  //     ]);
+  //   } else {
+  //     setStatus((prev) => [
+  //       ...prev,
+  //       "[오류] 서버 로그를 불러오는 데 실패했습니다.",
+  //     ]);
+  //   }
+  // };
+
+  const handleCheckBounce = async () => {
+    if (!lastSentTimestamp) {
+      setStatus((prev) => [...prev, "[알림] 먼저 이메일을 발송해주세요."]);
+      return;
+    }
+
+    setStatus((prev) => [
+      ...prev,
+      "[알림] 마지막 발송 건에 대한 반송 메일을 확인합니다...",
+    ]);
+
+    const res = await fetch("/api/check-bounce", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        senderEmail: selectedEmail,
+        senderPassword: selectedPassword,
+        // 저장해둔 정확한 발송 시각을 API로 전송
+        searchSince: lastSentTimestamp,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (data?.bounces?.length) {
+      setStatus((prev) => [...prev, ...data.bounces]);
+    } else {
+      setStatus((prev) => [
+        ...prev,
+        "[알림] 마지막 발송 이후 새로 도착한 반송 메일이 없습니다.",
+      ]);
+    }
   };
 
   const successCount = status.filter((line) => line.includes("[성공]")).length;
@@ -140,7 +207,7 @@ export default function SendEmailPage() {
               htmlFor="file-upload"
               className="cursor-pointer rounded  px-2 py-2 bg-gray-500 hover:bg-gray-700 text-white "
             >
-              엑셀 파일 선택
+              엑셀 이메일 목록 업로드
             </label>
             <input
               id="file-upload"
@@ -176,24 +243,46 @@ export default function SendEmailPage() {
           </button>
         </div>
 
-        <div className="w-[30%] h-[90%] ">
+        <div className="w-[30%] h-[90%]">
           <div
             ref={scrollRef}
-            className="mt-4 h-[82%] overflow-y-auto rounded bg-gray-200 whitespace-pre-wrap text-sm text-gray-800"
+            className="mt-4 h-[82%] overflow-y-auto rounded bg-gray-200 whitespace-pre-wrap text-sm text-gray-800 p-2"
           >
             {status.map((line, i) => (
-              <div key={i}>{line}</div>
+              <div
+                key={i}
+                className={
+                  line.includes("[실패]")
+                    ? "text-red-500"
+                    : line.includes("[반송됨]")
+                    ? "text-orange-500 font-semibold" // 반송됨 스타일 강조
+                    : line.includes("[알림]")
+                    ? "text-blue-500" // 알림 스타일 추가
+                    : "text-green-600"
+                }
+              >
+                {line}
+              </div>
             ))}
           </div>
-          {status.length > 0 && ( // ✔ status가 하나라도 있으면 요약 통계 출력
-            <div className="mt-5 h-[8%]">
+
+          {status.length > 0 && (
+            <div className="mt-4 h-[8%]">
               📊 총 {totalCount}명 중 → ✅ {successCount}명 성공, ❌ {failCount}
               명 실패
             </div>
           )}
+
+          <button
+            onClick={handleCheckBounce}
+            className="mt-4 w-full py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            📮 반송 메일 확인
+          </button>
         </div>
       </div>
-      {/* ✅ 전송 완료 모달 */}
+
+      {/* 완료 모달 */}
       {showModal && (
         <div
           className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
@@ -204,12 +293,9 @@ export default function SendEmailPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-xl font-semibold mb-4">✅ 메일 전송 완료</h2>
-            {status.length > 0 && ( // ✔ status가 하나라도 있으면 요약 통계 출력
+            {status.length > 0 && (
               <div className="text-gray-600">
-                <p>
-                  모든 메일이 정상적으로 전송되었습니다.
-                  <br />
-                </p>
+                <p>📤 메일 전송이 완료되었습니다.</p>
                 <p className="mt-1">
                   📊 총 {totalCount}명 중 → ✅ {successCount}명 성공, ❌{" "}
                   {failCount}명 실패

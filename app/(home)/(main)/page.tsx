@@ -6,7 +6,12 @@ export default function Home() {
       <div className="w-10/12 h-[80%] flex items-center justify-center">
         <div className="flex w-full max-w-7xl gap-20 items-center justify-center">
           <div className="w-[30%] h-full flex flex-col gap-16">
-            <h1 className="text-5xl">로고</h1>
+            <div className="w-[70%] h-full bg-gray-500 ">
+              <img
+                src="/img/logo2.avif"
+                className="w-full h-full object-cover"
+              />
+            </div>
             <p>
               당사 시스템은 엑셀 파일에 기재된 이메일 주소를 기반으로, 구글
               이메일 사용 시 <br />

@@ -29,21 +29,25 @@
     "eslint-config-next": "15.3.3",
     "formidable": "^3.5.4",
     "googleapis": "^150.0.1",
+    "imap-simple": "^5.1.0",
+    "mailparser": "^3.7.4",
     "next": "15.3.3",
-    "nodemailer": "^7.0.3",
+    "nodemailer": "^7.0.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-quill": "^2.0.0",
     "react-quill-new": "^3.4.6",
     "tailwindcss": "^4",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.8.3",
     "wait-on": "^8.0.3",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@types/imap-simple": "^4.2.10",
+    "@types/mailparser": "^3.4.6",
     "electron": "^37.1.0",
-    "electron-builder": "^26.0.12"
+    "electron-builder": "^26.0.12",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
   },
   "build": {
     "appId": "com.emailui.app",

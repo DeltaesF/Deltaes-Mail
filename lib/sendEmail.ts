@@ -1,4 +1,6 @@
 import nodemailer from "nodemailer";
+import fs from "fs";
+import path from "path";
 
 export interface SendEmailOptions {
   senderEmail: string;
@@ -6,10 +8,9 @@ export interface SendEmailOptions {
   subject: string;
   body: string;
   recipients: string[];
-  onProgress: (log: string) => void; // 실시간 로그 콜백
+  onProgress: (log: string) => void;
 }
 
-// 하나씩 메일 전송하고 실시간 콜백으로 상태 반환
 export async function sendEmail({
   senderEmail,
   senderPassword,
@@ -46,6 +47,8 @@ export async function sendEmail({
     </html>
   `;
 
+  const logPath = path.join(process.cwd(), "send-log.txt");
+
   for (const email of recipients) {
     try {
       await transporter.sendMail({
@@ -53,13 +56,25 @@ export async function sendEmail({
         to: email,
         subject,
         html: styledHtml,
+        envelope: {
+          from: senderEmail,
+          to: email,
+        },
       });
 
-      onProgress(`[성공] ${email}\n`);
+      const logMsg = `[성공] ${email}`;
+      fs.appendFileSync(logPath, `${new Date().toISOString()} ${logMsg}\n`);
+      onProgress(logMsg);
     } catch (e: unknown) {
-      let errorMessage = "Unknown error";
-      if (e instanceof Error) errorMessage = e.message;
-      onProgress(`[실패] ${email}: ${errorMessage}\n`);
+      let errMsg = "Unknown error";
+
+      if (e instanceof Error) {
+        errMsg = e.message;
+      }
+
+      const logMsg = `[실패] ${email}: ${errMsg}`;
+      fs.appendFileSync(logPath, `${new Date().toISOString()} ${logMsg}\n`);
+      onProgress(logMsg);
     }
   }
 }
