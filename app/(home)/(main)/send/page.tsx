@@ -34,9 +34,9 @@ export default function SendEmailPage() {
 
   const [showModal, setShowModal] = useState(false);
 
-  const [lastSentTimestamp, setLastSentTimestamp] = useState<string | null>(
-    null
-  );
+  // const [lastSentTimestamp, setLastSentTimestamp] = useState<string | null>(
+  //   null
+  // );
 
   // 📌 서버에서 발신자 계정 목록을 불러오기
   useEffect(() => {
@@ -65,7 +65,6 @@ export default function SendEmailPage() {
 
     setLoading(true);
     setStatus([]);
-    setLastSentTimestamp(null); // 새 발송 시작 시, 이전 타임스탬프 초기화
 
     const formData = new FormData();
     formData.append("subject", subject);
@@ -91,7 +90,6 @@ export default function SendEmailPage() {
       setStatus((prev) => [...prev, ...text.trim().split("\n")]);
     }
 
-    setLastSentTimestamp(new Date().toISOString());
     setStatus((prev) => [
       ...prev,
       "[알림] 발송 완료! 이제 반송 메일을 확인할 수 있습니다.",
@@ -124,16 +122,9 @@ export default function SendEmailPage() {
   //   }
   // };
 
+  // [핵심 수정] 복잡한 필터링 로직을 모두 제거하여 단순화합니다.
   const handleCheckBounce = async () => {
-    if (!lastSentTimestamp) {
-      setStatus((prev) => [...prev, "[알림] 먼저 이메일을 발송해주세요."]);
-      return;
-    }
-
-    setStatus((prev) => [
-      ...prev,
-      "[알림] 마지막 발송 건에 대한 반송 메일을 확인합니다...",
-    ]);
+    setStatus((prev) => [...prev, "[알림] 도착한 반송 메일을 확인합니다..."]);
 
     const res = await fetch("/api/check-bounce", {
       method: "POST",
@@ -141,23 +132,24 @@ export default function SendEmailPage() {
       body: JSON.stringify({
         senderEmail: selectedEmail,
         senderPassword: selectedPassword,
-        // 저장해둔 정확한 발송 시각을 API로 전송
-        searchSince: lastSentTimestamp,
       }),
     });
 
     const data = await res.json();
 
-    if (data?.bounces?.length) {
-      setStatus((prev) => [...prev, ...data.bounces]);
-    } else {
-      setStatus((prev) => [
-        ...prev,
-        "[알림] 마지막 발송 이후 새로 도착한 반송 메일이 없습니다.",
-      ]);
-    }
+    // "확인 중" 메시지만 지우고, 백엔드가 보내준 결과만 그대로 추가합니다.
+    // 백엔드가 오직 '새로운' 메일만 보내주므로, 프론트에서는 더 이상 필터링할 필요가 없습니다.
+    setStatus((prev) => {
+      const filteredLog = prev.filter(
+        (line) => !line.includes("반송 메일을 확인합니다")
+      );
+      if (data?.bounces?.length) {
+        return [...filteredLog, ...data.bounces];
+      } else {
+        return [...filteredLog, "[알림] 새로 도착한 반송 메일이 없습니다."];
+      }
+    });
   };
-
   const successCount = status.filter((line) => line.includes("[성공]")).length;
   const failCount = status.filter((line) => line.includes("[실패]")).length;
   const totalCount = successCount + failCount;
@@ -275,7 +267,7 @@ export default function SendEmailPage() {
 
           <button
             onClick={handleCheckBounce}
-            className="mt-4 w-full py-2 bg-red-600 text-white rounded hover:bg-red-700"
+            className="mt-2 w-full py-2 bg-red-600 text-white rounded hover:bg-red-700 cursor-pointer"
           >
             📮 반송 메일 확인
           </button>

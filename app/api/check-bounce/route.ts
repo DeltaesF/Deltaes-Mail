@@ -3,24 +3,25 @@ import { checkBounceEmails } from "@/lib/checkBounce";
 
 export async function POST(req: NextRequest) {
   try {
-    const { senderEmail, senderPassword, searchSince } = await req.json();
+    // 시간 관련 파라미터를 받지 않습니다.
+    const { senderEmail, senderPassword } = await req.json();
 
-    if (!senderEmail || !senderPassword || !searchSince) {
+    if (!senderEmail || !senderPassword) {
       return NextResponse.json(
-        { error: "필수 정보가 누락되었습니다." },
+        { error: "이메일 계정 정보 누락" },
         { status: 400 }
       );
     }
 
-    const bounces = await checkBounceEmails(
-      senderEmail,
-      senderPassword,
-      searchSince
-    );
+    // 파라미터 없이 함수를 호출합니다.
+    const bounces = await checkBounceEmails(senderEmail, senderPassword);
 
     return NextResponse.json({ bounces });
   } catch (error) {
     console.error("반송 메일 확인 중 오류:", error);
-    return NextResponse.json({ error: "반송 메일 확인 실패" }, { status: 500 });
+    return NextResponse.json(
+      { error: "서버에서 반송 메일을 확인하는 중 오류가 발생했습니다." },
+      { status: 500 }
+    );
   }
 }
