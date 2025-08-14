@@ -9,6 +9,7 @@ export interface SendEmailOptions {
   body: string;
   recipients: string[];
   onProgress: (log: string) => void;
+  signal?: AbortSignal; // 중단 신호를 받을 수 있도록 추가
 }
 
 export async function sendEmail({
@@ -18,6 +19,7 @@ export async function sendEmail({
   body,
   recipients,
   onProgress,
+  signal,
 }: SendEmailOptions): Promise<void> {
   const transporter = nodemailer.createTransport({
     service: "Gmail",
@@ -50,6 +52,14 @@ export async function sendEmail({
   const logPath = path.join(process.cwd(), "send-log.txt");
 
   for (const email of recipients) {
+    // [수정 3] 매번 이메일을 보내기 전에 중단 신호가 왔는지 확인합니다.
+    if (signal?.aborted) {
+      const logMsg = "[알림] 사용자에 의해 전송이 중단되었습니다.";
+      // 중단 로그는 파일에 기록하지 않고, 화면에만 표시합니다.
+      onProgress(logMsg + "\n");
+      break; // 중단 신호가 있으면 for 루프를 즉시 탈출합니다.
+    }
+
     try {
       await transporter.sendMail({
         from: senderEmail,

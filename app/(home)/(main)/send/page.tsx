@@ -37,6 +37,8 @@ export default function SendEmailPage() {
   // const [lastSentTimestamp, setLastSentTimestamp] = useState<string | null>(
   //   null
   // );
+  // [수정 1] AbortController를 관리하기 위한 ref를 추가합니다.
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // 📌 서버에서 발신자 계정 목록을 불러오기
   useEffect(() => {
@@ -66,6 +68,9 @@ export default function SendEmailPage() {
     setLoading(true);
     setStatus([]);
 
+    // [수정 2] 새로운 AbortController를 생성합니다.
+    abortControllerRef.current = new AbortController();
+
     const formData = new FormData();
     formData.append("subject", subject);
     formData.append("body", body);
@@ -73,33 +78,54 @@ export default function SendEmailPage() {
     formData.append("senderEmail", selectedEmail);
     formData.append("senderPassword", selectedPassword);
 
-    const res = await fetch("/api/send-email", {
-      method: "POST",
-      body: formData,
-    });
+    try {
+      const res = await fetch("/api/send-email", {
+        method: "POST",
+        body: formData,
+        // [수정 3] 생성된 '중단 신호'를 fetch 요청에 전달합니다.
+        signal: abortControllerRef.current.signal,
+      });
 
-    if (!res.body) return;
+      if (!res.body) return;
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
 
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const text = decoder.decode(value);
+        setStatus((prev) => [...prev, ...text.trim().split("\n")]);
+      }
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      const text = decoder.decode(value);
-      setStatus((prev) => [...prev, ...text.trim().split("\n")]);
+      setStatus((prev) => [...prev, "[알림] 모든 작업이 완료되었습니다."]);
+      setShowModal(true);
+      fireConfetti();
+    } catch (error) {
+      // [수정] 'error'가 Error 인스턴스인지 확인하여 타입을 좁힙니다.
+      if (error instanceof Error && error.name === "AbortError") {
+        console.log("Fetch aborted by user.");
+      } else {
+        console.error("An error occurred during fetch:", error);
+        setStatus((prev) => [
+          ...prev,
+          "[오류] 전송 중 예상치 못한 오류가 발생했습니다.",
+        ]);
+      }
+    } finally {
+      setLoading(false);
+      abortControllerRef.current = null;
     }
+  };
 
-    setStatus((prev) => [
-      ...prev,
-      "[알림] 발송 완료! 이제 반송 메일을 확인할 수 있습니다.",
-    ]);
-
-    // await fetchLogs();
-
-    setLoading(false);
-    setShowModal(true);
-    fireConfetti();
+  // [수정 5] 전송을 중단하는 함수를 새로 만듭니다.
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      setStatus((prev) => [
+        ...prev,
+        "[알림] 사용자에 의해 전송이 중지되었습니다.",
+      ]);
+    }
   };
 
   // // ✅ 서버 로그를 status에 추가
@@ -123,35 +149,37 @@ export default function SendEmailPage() {
   // };
 
   // [핵심 수정] 복잡한 필터링 로직을 모두 제거하여 단순화합니다.
-  const handleCheckBounce = async () => {
-    setStatus((prev) => [...prev, "[알림] 도착한 반송 메일을 확인합니다..."]);
+  // const handleCheckBounce = async () => {
+  //   setStatus((prev) => [...prev, "[알림] 도착한 반송 메일을 확인합니다..."]);
 
-    const res = await fetch("/api/check-bounce", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        senderEmail: selectedEmail,
-        senderPassword: selectedPassword,
-      }),
-    });
+  //   const res = await fetch("/api/check-bounce", {
+  //     method: "POST",
+  //     headers: { "Content-Type": "application/json" },
+  //     body: JSON.stringify({
+  //       senderEmail: selectedEmail,
+  //       senderPassword: selectedPassword,
+  //     }),
+  //   });
 
-    const data = await res.json();
+  //   const data = await res.json();
 
-    // "확인 중" 메시지만 지우고, 백엔드가 보내준 결과만 그대로 추가합니다.
-    // 백엔드가 오직 '새로운' 메일만 보내주므로, 프론트에서는 더 이상 필터링할 필요가 없습니다.
-    setStatus((prev) => {
-      const filteredLog = prev.filter(
-        (line) => !line.includes("반송 메일을 확인합니다")
-      );
-      if (data?.bounces?.length) {
-        return [...filteredLog, ...data.bounces];
-      } else {
-        return [...filteredLog, "[알림] 새로 도착한 반송 메일이 없습니다."];
-      }
-    });
-  };
+  //   // "확인 중" 메시지만 지우고, 백엔드가 보내준 결과만 그대로 추가합니다.
+  //   // 백엔드가 오직 '새로운' 메일만 보내주므로, 프론트에서는 더 이상 필터링할 필요가 없습니다.
+  //   setStatus((prev) => {
+  //     const filteredLog = prev.filter(
+  //       (line) => !line.includes("반송 메일을 확인합니다")
+  //     );
+  //     if (data?.bounces?.length) {
+  //       return [...filteredLog, ...data.bounces];
+  //     } else {
+  //       return [...filteredLog, "[알림] 새로 도착한 반송 메일이 없습니다."];
+  //     }
+  //   });
+  // };
+
   const successCount = status.filter((line) => line.includes("[성공]")).length;
   const failCount = status.filter((line) => line.includes("[실패]")).length;
+  const bounceCount = status.filter((line) => line.includes("[반송됨]")).length;
   const totalCount = successCount + failCount;
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -226,12 +254,16 @@ export default function SendEmailPage() {
 
           <QuillEditor value={body} onChange={setBody} />
 
+          {/* [수정 6] loading 상태에 따라 버튼의 기능과 텍스트가 바뀌도록 수정합니다. */}
           <button
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded disabled:opacity-50 cursor-pointer"
-            disabled={loading}
-            onClick={handleSubmit}
+            className={`w-full text-white py-3 rounded disabled:opacity-50 cursor-pointer ${
+              loading
+                ? "bg-yellow-600 hover:bg-yellow-700"
+                : "bg-blue-600 hover:bg-blue-700"
+            }`}
+            onClick={loading ? handleStop : handleSubmit}
           >
-            {loading ? "전송 중..." : "메일 전송"}
+            {loading ? "전송 중지" : "메일 전송"}
           </button>
         </div>
 
@@ -258,7 +290,18 @@ export default function SendEmailPage() {
             ))}
           </div>
 
+          {/* --- [수정 3] 요약 정보에 '반송' 건수를 추가합니다. --- */}
           {status.length > 0 && (
+            <div className="mt-4 h-[8%] text-sm">
+              <p>📊 총 {totalCount}건 발송 시도</p>
+              <p>
+                ✅ {successCount}건 성공, ❌ {failCount}건 실패, 📮{" "}
+                {bounceCount}건 반송
+              </p>
+            </div>
+          )}
+
+          {/* {status.length > 0 && (
             <div className="mt-4 h-[8%]">
               📊 총 {totalCount}명 중 → ✅ {successCount}명 성공, ❌ {failCount}
               명 실패
@@ -270,7 +313,7 @@ export default function SendEmailPage() {
             className="mt-2 w-full py-2 bg-red-600 text-white rounded hover:bg-red-700 cursor-pointer"
           >
             📮 반송 메일 확인
-          </button>
+          </button> */}
         </div>
       </div>
 
@@ -284,16 +327,14 @@ export default function SendEmailPage() {
             className="bg-white rounded-xl shadow-xl p-6 w-100 text-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-xl font-semibold mb-4">✅ 메일 전송 완료</h2>
-            {status.length > 0 && (
-              <div className="text-gray-600">
-                <p>📤 메일 전송이 완료되었습니다.</p>
-                <p className="mt-1">
-                  📊 총 {totalCount}명 중 → ✅ {successCount}명 성공, ❌{" "}
-                  {failCount}명 실패
-                </p>
-              </div>
-            )}
+            <h2 className="text-xl font-semibold mb-4">✅ 모든 작업 완료</h2>
+            <div className="text-gray-600">
+              <p>📤 메일 전송 및 실시간 반송 확인이 모두 끝났습니다.</p>
+              <p className="mt-1">
+                📊 총 {totalCount}건 발송 시도 → ✅ {successCount}건 성공, ❌{" "}
+                {failCount}건 실패, 📮 {bounceCount}건 반송
+              </p>
+            </div>
             <button
               className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
               onClick={() => setShowModal(false)}

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>인증</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background-color: #f4f4f9;
+      }
+      #container {
+        text-align: center;
+        background: white;
+        padding: 40px;
+        border-radius: 12px;
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+        width: 320px;
+      }
+      h2 {
+        color: #333;
+        margin-top: 0;
+      }
+      p {
+        color: #666;
+        font-size: 14px;
+      }
+      #error {
+        color: #d9534f;
+        height: 20px;
+        font-size: 12px;
+        margin-top: 10px;
+      }
+      input[type="password"] {
+        padding: 12px;
+        margin: 15px 0;
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+      }
+      button {
+        padding: 12px 20px;
+        cursor: pointer;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        width: 100%;
+        font-size: 16px;
+        transition: background-color 0.2s;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="container">
+      <h2 id="title">프로그램 인증</h2>
+      <p id="description">비밀번호를 입력하세요.</p>
+      <input type="password" id="password" placeholder="Password" autofocus />
+      <button id="submit">확인</button>
+      <div id="error"></div>
+    </div>
+    <script>
+      const title = document.getElementById("title");
+      const description = document.getElementById("description");
+      const passwordInput = document.getElementById("password");
+      const submitButton = document.getElementById("submit");
+      const errorDiv = document.getElementById("error");
+
+      let currentMode = "login"; // 'login' or 'register'
+
+      submitButton.addEventListener("click", () => {
+        errorDiv.textContent = "";
+        const password = passwordInput.value;
+        if (currentMode === "register") {
+          window.electronAPI.registerApp(password);
+        } else {
+          window.electronAPI.verifyPassword(password);
+        }
+      });
+
+      passwordInput.addEventListener("keyup", (event) => {
+        if (event.key === "Enter") {
+          submitButton.click();
+        }
+      });
+
+      window.electronAPI.onAuthResult((success, message) => {
+        if (!success) {
+          errorDiv.textContent = message || "비밀번호가 일치하지 않습니다.";
+          passwordInput.value = "";
+          passwordInput.focus();
+        }
+      });
+
+      // 메인 프로세스로부터 현재 모드를 설정받음
+      window.electronAPI.onSetMode((mode) => {
+        currentMode = mode;
+        if (mode === "register") {
+          title.textContent = "프로그램 활성화";
+          description.textContent = "관리자에게 받은 제품 키를 입력하세요.";
+          passwordInput.placeholder = "Product Key";
+        }
+      });
+    </script>
+  </body>
+</html>

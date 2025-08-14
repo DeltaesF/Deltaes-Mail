@@ -21,6 +21,7 @@
     "@types/quill": "^2.0.14",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
+    "bcryptjs": "^3.0.2",
     "canvas-confetti": "^1.9.3",
     "concurrently": "^9.2.0",
     "dotenv": "^16.4.5",
@@ -30,6 +31,7 @@
     "formidable": "^3.5.4",
     "googleapis": "^150.0.1",
     "imap-simple": "^5.1.0",
+    "macaddress": "^0.5.3",
     "mailparser": "^3.7.4",
     "next": "15.3.3",
     "nodemailer": "^7.0.5",
@@ -42,6 +44,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/imap-simple": "^4.2.10",
     "@types/mailparser": "^3.4.6",
     "electron": "^37.1.0",
@@ -70,6 +73,12 @@
     },
     "win": {
       "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "runAfterFinish": true
     }
   }
 }
