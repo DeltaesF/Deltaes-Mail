@@ -191,17 +191,22 @@ export default function SendEmailPage() {
   }, [status]);
 
   return (
-    <div className="w-full h-11/12 flex items-center justify-center ">
-      <div className="w-11/12 max-w-6xl h-[100%] flex items-center justify-center gap-6 ">
+    <div className="w-full h-11/12 flex flex-col items-center justify-start ">
+      <h1 className="text-3xl text-[#6e6e6e] font-bold mt-7 border-b-4 border-[#5BBAFF] pb-1 w-1/6 text-center">
+        MAIL
+      </h1>
+      <div className="w-11/12 max-w-6xl h-[100%] flex gap-6 mt-8">
         <div className="w-[70%] h-[80%]">
           {/* 발신자 이메일 선택 */}
           <div className="mb-4 ">
-            <label className="mb-1 font-medium">보내는 이메일 📧</label>
+            <label className="ml-2 mb-1 font-bold text-[#6e6e6e]">
+              e-mail 📧
+            </label>
             {accounts.length === 0 ? (
               <p className="text-red-500 text-sm"></p>
             ) : (
               <select
-                className="ml-2 border p-2 cursor-pointer rounded"
+                className="ml-2 p-2 cursor-pointer border rounded-2xl border-[#C6C5C5]"
                 value={selectedEmail}
                 onChange={(e) => {
                   const selected = accounts.find(
@@ -225,9 +230,9 @@ export default function SendEmailPage() {
           <div className="mb-4">
             <label
               htmlFor="file-upload"
-              className="cursor-pointer rounded  px-2 py-2 bg-gray-500 hover:bg-gray-700 text-white "
+              className="cursor-pointer rounded  px-5 py-2 bg-[#5BBAFF] hover:bg-[#7ac5fa] text-white rounded-2xl"
             >
-              엑셀 이메일 목록 업로드
+              excel-mail
             </label>
             <input
               id="file-upload"
@@ -246,8 +251,8 @@ export default function SendEmailPage() {
 
           <input
             type="text"
-            placeholder="메일 제목"
-            className="bg-gray-200 p-3 w-full mb-4 rounded"
+            placeholder="메일 제목을 입력해주세요."
+            className="bg-gray-100 p-3 w-full mb-4 rounded"
             onChange={(e) => setSubject(e.target.value)}
             value={subject}
           />
@@ -259,7 +264,7 @@ export default function SendEmailPage() {
             className={`w-full text-white py-3 rounded disabled:opacity-50 cursor-pointer ${
               loading
                 ? "bg-yellow-600 hover:bg-yellow-700"
-                : "bg-blue-600 hover:bg-blue-700"
+                : "bg-[#5BBAFF] hover:bg-[#7ac5fa]"
             }`}
             onClick={loading ? handleStop : handleSubmit}
           >
@@ -270,24 +275,29 @@ export default function SendEmailPage() {
         <div className="w-[30%] h-[90%]">
           <div
             ref={scrollRef}
-            className="mt-4 h-[82%] overflow-y-auto rounded bg-gray-200 whitespace-pre-wrap text-sm text-gray-800 p-2"
+            className="mt-4 h-[90%] overflow-y-auto rounded-3xl bg-white border border-gray-200 whitespace-pre-wrap text-sm text-gray-800 flex flex-col"
           >
-            {status.map((line, i) => (
-              <div
-                key={i}
-                className={
-                  line.includes("[실패]")
-                    ? "text-red-500"
-                    : line.includes("[반송됨]")
-                    ? "text-orange-500 font-semibold" // 반송됨 스타일 강조
-                    : line.includes("[알림]")
-                    ? "text-blue-500" // 알림 스타일 추가
-                    : "text-green-600"
-                }
-              >
-                {line}
-              </div>
-            ))}
+            <div className="text-center p-3 bg-[#5BBAFF] text-white font-bold">
+              send list
+            </div>
+            <div className="flex-1 p-2 overflow-y-auto">
+              {status.map((line, i) => (
+                <div
+                  key={i}
+                  className={
+                    line.includes("[실패]")
+                      ? "text-red-500"
+                      : line.includes("[반송됨]")
+                      ? "text-orange-500 font-semibold"
+                      : line.includes("[알림]")
+                      ? "text-blue-500"
+                      : "text-green-600"
+                  }
+                >
+                  {line}
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* --- [수정 3] 요약 정보에 '반송' 건수를 추가합니다. --- */}

@@ -74,7 +74,7 @@ export async function sendEmail({
 
       const logMsg = `[성공] ${email}`;
       fs.appendFileSync(logPath, `${new Date().toISOString()} ${logMsg}\n`);
-      onProgress(logMsg);
+      onProgress(logMsg + "\n");
     } catch (e: unknown) {
       let errMsg = "Unknown error";
 
@@ -84,7 +84,7 @@ export async function sendEmail({
 
       const logMsg = `[실패] ${email}: ${errMsg}`;
       fs.appendFileSync(logPath, `${new Date().toISOString()} ${logMsg}\n`);
-      onProgress(logMsg);
+      onProgress(logMsg + "\n");
     }
   }
 }

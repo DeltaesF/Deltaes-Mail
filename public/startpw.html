@@ -62,29 +62,20 @@
   </head>
   <body>
     <div id="container">
-      <h2 id="title">프로그램 인증</h2>
-      <p id="description">비밀번호를 입력하세요.</p>
+      <h2>프로그램 인증</h2>
+      <p>비밀번호를 입력하세요.</p>
       <input type="password" id="password" placeholder="Password" autofocus />
       <button id="submit">확인</button>
       <div id="error"></div>
     </div>
     <script>
-      const title = document.getElementById("title");
-      const description = document.getElementById("description");
       const passwordInput = document.getElementById("password");
       const submitButton = document.getElementById("submit");
       const errorDiv = document.getElementById("error");
 
-      let currentMode = "login"; // 'login' or 'register'
-
       submitButton.addEventListener("click", () => {
         errorDiv.textContent = "";
-        const password = passwordInput.value;
-        if (currentMode === "register") {
-          window.electronAPI.registerApp(password);
-        } else {
-          window.electronAPI.verifyPassword(password);
-        }
+        window.electronAPI.verifyPassword(passwordInput.value);
       });
 
       passwordInput.addEventListener("keyup", (event) => {
@@ -93,21 +84,11 @@
         }
       });
 
-      window.electronAPI.onAuthResult((success, message) => {
+      window.electronAPI.onAuthResult((success) => {
         if (!success) {
-          errorDiv.textContent = message || "비밀번호가 일치하지 않습니다.";
+          errorDiv.textContent = "비밀번호가 일치하지 않습니다.";
           passwordInput.value = "";
           passwordInput.focus();
-        }
-      });
-
-      // 메인 프로세스로부터 현재 모드를 설정받음
-      window.electronAPI.onSetMode((mode) => {
-        currentMode = mode;
-        if (mode === "register") {
-          title.textContent = "프로그램 활성화";
-          description.textContent = "관리자에게 받은 제품 키를 입력하세요.";
-          passwordInput.placeholder = "Product Key";
         }
       });
     </script>

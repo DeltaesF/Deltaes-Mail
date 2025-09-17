@@ -9,7 +9,8 @@
     "start": "next start -p 3001",
     "lint": "next lint",
     "electron:build": "tsc -p tsconfig.electron.json",
-    "pack": "npm run build && npm run electron:build && electron-builder"
+    "pack": "npm run build && npm run electron:build && electron-builder",
+    "generate-key": "ts-node --project tsconfig.script.json generate-key.ts"
   },
   "dependencies": {
     "@eslint/eslintrc": "^3",
