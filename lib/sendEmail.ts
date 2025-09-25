@@ -41,6 +41,22 @@ export async function sendEmail({
           ol { list-style-type: decimal; padding-left: 1.2em; }
           ul { list-style-type: disc; padding-left: 1.2em; }
           li { margin-bottom: 5px; }
+          
+          .text-left { text-align: left; }
+          .text-center { text-align: center; }
+          .text-right { text-align: right; }
+
+           /* --- 👇 이미지 가운데 정렬을 위한 스타일 추가 --- */
+          /* Quill 편집기에서 가운데 정렬된 이미지를 처리 */
+          img.ql-align-center {
+            display: block;
+            margin: 0 auto;
+          }
+          /* 이미지를 포함하는 단락이 가운데 정렬된 경우 처리 */
+          p.ql-align-center {
+            text-align: center;
+          }
+            
         </style>
       </head>
       <body>

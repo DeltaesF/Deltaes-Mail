@@ -55,14 +55,16 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // 공개 URL 생성
-    const publicUrl = `https://lh3.googleusercontent.com/d/${fileId}`;
+    // <img> 태그에 바로 사용 가능한 직접 콘텐츠 링크
+    const publicUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
 
-    console.log("fileUrl: ", publicUrl);
+    console.log("Embeddable fileUrl: ", publicUrl);
 
     return NextResponse.json({ url: publicUrl });
   } catch (error: unknown) {
     console.error("Google Drive Upload Error:", error);
-    return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+    const errorMessage =
+      error instanceof Error ? error.message : "Upload failed";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

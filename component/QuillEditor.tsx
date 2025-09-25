@@ -32,6 +32,7 @@ export default function QuillEditor({ value, onChange }: QuillEditorProps) {
         container: [
           [{ header: [1, 2, 3, 4, 5, 6, false] }],
           ["bold", "italic", "underline", "strike"], // 굵게, 기울임 등
+          [{ align: [] }],
           [{ list: "ordered" }, { list: "bullet" }],
           ["link", "image"], // ✅ 링크 삽입 버튼
           ["clean"], // 서식 제거
@@ -43,6 +44,25 @@ export default function QuillEditor({ value, onChange }: QuillEditorProps) {
     }),
     []
   );
+
+  const formats = [
+    "header",
+    "font",
+    "list",
+    "bold",
+    "italic",
+    "underline",
+    "strike",
+    "color",
+    "background",
+    "align",
+    "blockquote",
+    "code-block",
+    "link",
+    "image",
+    "video",
+    "hr",
+  ];
 
   async function uploadImageToGoogleDrive(file: File): Promise<string> {
     const formData = new FormData();
@@ -74,18 +94,41 @@ export default function QuillEditor({ value, onChange }: QuillEditorProps) {
 
       const file = input.files[0];
 
-      // Google Drive에 업로드 후 이미지 URL 받아오기
-      const url = await uploadImageToGoogleDrive(file);
-      const decodedUrl = url.replace(/&amp;/g, "&");
-
       const editor = editorRef.current?.getEditor();
       if (!editor) return;
 
-      const range = editor.getSelection(true);
-      if (range) {
-        editor.insertEmbed(range.index, "image", decodedUrl);
-        editor.setSelection(range.index + 1);
-      }
+      // --- 👇 여기서부터 수정된 로직입니다 ---
+
+      // 1. 선택한 파일로부터 이미지 원본 크기 가져오기
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = async () => {
+        const img = new Image();
+        img.src = reader.result as string;
+        img.onload = async () => {
+          const imageWidth = img.width;
+          const imageHeight = img.height;
+
+          try {
+            // 2. Google Drive에 업로드 후 이미지 URL 받아오기
+            const url = await uploadImageToGoogleDrive(file);
+            const decodedUrl = url.replace(/&amp;/g, "&");
+            console.log("서버로부터 받은 URL:", decodedUrl);
+            // 3. 원본 크기를 적용한 <img> 태그 생성
+            const imageHtml = `<img src="${decodedUrl}" width="${imageWidth}" height="${imageHeight}" style="width:${imageWidth}px; height:${imageHeight}px;" />`;
+
+            // 4. 현재 커서 위치에 HTML 삽입
+            const range = editor.getSelection(true);
+            if (range) {
+              // insertEmbed 대신 dangerouslyPasteHTML 사용
+              editor.clipboard.dangerouslyPasteHTML(range.index, imageHtml);
+              editor.setSelection(range.index + 1);
+            }
+          } catch (error) {
+            console.error("Image upload or processing failed:", error);
+          }
+        };
+      };
     };
   }
 
@@ -98,6 +141,7 @@ export default function QuillEditor({ value, onChange }: QuillEditorProps) {
         value={value}
         onChange={onChange}
         modules={modules}
+        formats={formats}
         theme="snow"
         className="h-full"
       />
