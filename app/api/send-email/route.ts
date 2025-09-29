@@ -1,10 +1,12 @@
 import { NextRequest } from "next/server";
 import { sendEmail } from "@/lib/sendEmail";
 import { xlsxEmail } from "@/lib/xlsxEmail";
-import { checkBounceEmails, BounceCheckOptions } from "@/lib/checkBounce";
+import { checkBounceEmails } from "@/lib/checkBounce";
 
 export async function POST(req: NextRequest) {
+  // [수정 1] 프론트엔드에서 보낸 '중단 신호'를 받습니다.
   const signal = req.signal;
+
   const formData = await req.formData();
   const subject = formData.get("subject") as string;
   const body = formData.get("body") as string;
@@ -14,67 +16,88 @@ export async function POST(req: NextRequest) {
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const emailList = xlsxEmail(buffer);
+
   const encoder = new TextEncoder();
-  const startTime = new Date();
+  let bounceCheckInterval: NodeJS.Timeout | undefined;
 
   const stream = new ReadableStream({
     async start(controller) {
+      // 주기적으로 반송 메일을 확인하는 작업을 시작합니다.
+      bounceCheckInterval = setInterval(async () => {
+        try {
+          const bounces = await checkBounceEmails(senderEmail, senderPassword);
+          if (bounces.length > 0) {
+            const bounceLog = bounces.join("\n");
+            controller.enqueue(encoder.encode(bounceLog + "\n"));
+          }
+        } catch (error) {
+          console.error("주기적 반송 메일 확인 중 오류:", error);
+        }
+      }, 8000); // 8초마다 확인
+
       try {
+        // 메인 이메일 발송 작업을 실행하며, '중단 신호'를 함께 전달합니다.
         await sendEmail({
           senderEmail,
           senderPassword,
           subject,
           body,
           recipients: emailList,
-          onProgress: (log) => controller.enqueue(encoder.encode(log)),
-          signal,
+          onProgress: (log) => {
+            controller.enqueue(encoder.encode(log));
+          },
+          signal, // [수정 2] AbortSignal을 sendEmail 함수로 전달
         });
 
+        // [수정 3] 전송이 중단되었다면, 최종 확인 절차를 건너뜁니다.
         if (signal.aborted) {
-          controller.enqueue(encoder.encode("[알림] 작업이 중단되었습니다.\n"));
-          return;
+          return; // finally 블록에서 정리 후 종료됩니다.
         }
+
+        // --- 모든 작업이 끝난 후 최종 확인 절차 ---
+        clearInterval(bounceCheckInterval);
+        bounceCheckInterval = undefined; // 정리되었음을 표시
 
         controller.enqueue(
-          encoder.encode(
-            "[알림] 최종 반송 메일을 확인 중입니다 (15초 대기)...\n"
-          )
+          encoder.encode("[알림] 최종 반송 메일을 확인 중입니다...\n")
         );
-        await new Promise((resolve) => setTimeout(resolve, 15000));
 
-        if (signal.aborted) {
-          controller.enqueue(encoder.encode("[알림] 작업이 중단되었습니다.\n"));
-          return;
-        }
+        // 12초 대기 중에도 중단 신호를 받을 수 있도록 처리
+        await new Promise((resolve) => {
+          const timeout = setTimeout(resolve, 12000);
+          signal.addEventListener("abort", () => {
+            clearTimeout(timeout);
+            resolve(null); // 중단되면 즉시 resolve
+          });
+        });
 
-        const options: BounceCheckOptions = {
+        if (signal.aborted) return;
+
+        // 마지막으로 반송 메일을 한 번 더 확인합니다.
+        const finalBounces = await checkBounceEmails(
           senderEmail,
-          senderPassword,
-          since: startTime,
-        };
-        const finalBounces = await checkBounceEmails(options);
-
+          senderPassword
+        );
         if (finalBounces.length > 0) {
           const bounceLog = finalBounces.join("\n");
           controller.enqueue(encoder.encode(bounceLog + "\n"));
         }
-      } catch (error) {
-        console.error("send-email API 오류:", error);
-        controller.enqueue(
-          encoder.encode("[오류] 전체 작업 중 문제가 발생했습니다.\n")
-        );
       } finally {
-        // [수정] finally 블록에서 모든 작업이 끝난 후, 딱 한 번만 완료 메시지를 보냅니다.
+        // [수정 4] 작업이 끝나거나 중단되었을 때 항상 정리합니다.
+        if (bounceCheckInterval) {
+          clearInterval(bounceCheckInterval);
+        }
+        // 작업이 중단되지 않고 정상적으로 끝났을 때만 스트림을 닫습니다.
         if (!signal.aborted) {
-          controller.enqueue(
-            encoder.encode("[알림] 모든 작업이 완료되었습니다.\n")
-          );
           controller.close();
         }
       }
     },
     cancel() {
-      console.log("스트림이 클라이언트에 의해 취소되었습니다.");
+      // [수정 5] 프론트엔드가 연결을 끊으면(중단하면) 실행됩니다.
+      if (bounceCheckInterval) {
+        clearInterval(bounceCheckInterval);
+      }
     },
   });
 
